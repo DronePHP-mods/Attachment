@@ -1,0 +1,149 @@
+<?php if ($this->param("process") == "step1"): ?>
+
+	<?php
+		$attachment_types = $this->param('mime_types');
+		$mimes      = $this->param('mimes');
+	?>
+
+	<form method="post" onsubmit="return false;" id="frm-upload-attachments-archetype"  data-role='ajax-request'
+		action="<?= $this->basePath() ?>/public/SomeModule/SomeController/attachments/" data-type="post"
+		data-response="#frm-upload-attachments-archetype-response" data-title="Upload attachments">
+
+		<input type="hidden" name="your_entity_id" id="your_entity_id" value="<?= $this->param("your_entity_id") ?>" />
+		<input type="hidden" name="token" id="token" value="<?= $this->param("token") ?>" />
+
+		<?php foreach($this->param('attachment_types') as $tipo): ?>
+
+			<?php
+				$accept = [];
+				$accept_desc = [];
+				$accept_ext = [];
+
+				if (count($attachment_types)):
+
+					foreach ($attachment_types as $attachment_type => $attachment_mimes):
+
+						if ($attachment_type == $tipo["ATTACHMENT_TYPE"]):
+
+							foreach ($attachment_mimes as $mime)
+							{
+								$accept[] = $mimes[$mime["MIME_ID"]]["ATTACHMENT_TYPE"];
+								$accept_desc[] = $mimes[$mime["MIME_ID"]]["DESCRIPTION"];
+								$accept_ext[] = ".".$mimes[$mime["MIME_ID"]]["EXTENSIONS"];
+							}
+
+						endif;
+
+					endforeach;
+
+				endif;
+
+				if (count($accept))
+					$accept = implode(",", $accept);
+				else
+					$accept = "";
+
+				if (count($accept_desc))
+					$accept_desc = implode(",", $accept_desc);
+				else
+					$accept_desc = "";
+
+				if (count($accept_ext))
+					$accept_ext = implode(", ", $accept_ext);
+				else
+					$accept_ext = "";
+			?>
+
+			<div class="form-group input-group-dropzone">
+				<label for="file-reader-onchange-<?= $tipo["ATTACHMENT_TYPE"] ?>">
+					<h4><?= $tipo["DESCRIPTION"] ?> <?= ($tipo["REQUIRED"] == "S") ? '<sup>*</sup>' : '' ?></h4>
+				</label>
+				<input class="<?= ($tipo["REQUIRED"] == "S") ? 'requerido' : '' ?>" type="file" name="file-reader-onchange-<?= $tipo["ATTACHMENT_TYPE"] ?>" id="file-reader-onchange-<?= $tipo["ATTACHMENT_TYPE"] ?>" accept="<?= $accept ?>" multiple="multiple" />
+				<p class="help-block">Valid extensions: <?= $accept_ext ?></p>
+				<div id="file-reader-ondrop-<?= $tipo["ATTACHMENT_TYPE"] ?>" class="drop" style="overflow: hidden; min-height: 100px; position: relative; border: none; min-height: 0 !important"></div>
+			</div>
+		<?php endforeach; ?>
+
+		<button type="submit" class="btn btn-primary">
+			<span class="glyphicon glyphicon-floppy-saved"></span> Save
+		</button>
+
+	</form><br />
+
+	<div id="frm-upload-attachments-archetype-response"></div>
+
+	<script type="text/javascript">
+		$(function(){
+
+		    $jS.ready(function(){
+
+		        var inputs = $(".input-group-dropzone");
+
+		        $.each(inputs, function(key, val)
+		        {
+					var id     = $(val).find("input[type='file']").attr('id');
+					var accept = $(val).find("input[type='file']").attr('accept');
+					var drop   = $(val).find(".drop").attr('id');
+
+					var accept64 = window.btoa(unescape(encodeURIComponent(accept))).replace("==", "");
+
+		            var _files2 = new JScriptRender.reader.File({
+		                fileBox: document.querySelector("#"+id),
+		                dropBox: document.querySelector("#"+drop),
+		                preview: document.querySelector("#"+drop),
+		                size: 3145728999999999999,
+		                url: '<?= $this->basePath() ?>' + "/public/Attachement/File/loadTempFile/token/" + $("#token").val() + "/type/" + id.substring(21,id.length) + "/mime/" + accept64
+		            });
+
+		            _files2.addChangeEvent(function(files){
+		                $("#"+drop).empty();
+		                _files2.upload(files, function(data){
+		                    $("#"+drop).empty().html(data);
+		                });
+		            });
+		        });
+		    });
+		});
+	</script>
+
+<?php elseif ($this->param("process") == "success"): ?>
+
+	<div class="alert alert-success">
+		<i class="fa fa-lw fa-check"></i> <strong>Suucess</strong> Data stored successfilly
+	</div>
+
+	<script type="text/javascript">
+		$("#frm-upload-attachments-archetype select").val("");
+		$("#frm-upload-attachments-archetype input[type='file']").val("");
+		$("#frm-upload-attachments-archetype .drop").empty();
+
+		$("#report-form").trigger('submit');
+	</script>
+
+<?php elseif ($this->param("process") == "warning"): ?>
+
+	<div class="alert alert-warning">
+		<strong>Advertencia!</strong> <?= $this->param("message") ?>
+	</div>
+
+	<?php if ($this->isParam('messages')): ?>
+		<?php foreach($this->param("messages") as $input => $messages): ?>
+			<?php $lbl = $this->param("validator")->getOption($input, "label"); ?>
+
+				<h5><strong><?= $lbl ?></strong></h5>
+				<ol>
+					<?php foreach($messages as $code => $message): ?>
+						<li><?= $message ?></li>
+					<?php endforeach; ?>
+				</ol>
+
+		<?php endforeach; ?>
+	<?php endif; ?>
+
+<?php elseif ($this->param("process") == "error"): ?>
+
+	<div class="alert alert-danger">
+		<strong>Error!</strong> <?= $this->param("message") ?>
+	</div>
+
+<?php endif; ?>
